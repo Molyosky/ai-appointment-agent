@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  waha:
+    image: devlikeapro/waha
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Motor webjs (más estable para uso general)
+      - WHATSAPP_DEFAULT_ENGINE=webjs
+      - WHATSAPP_RESTART_ON_FAIL=True
+    volumes:
+      # Esto guarda la sesión de WhatsApp para que no escanees el QR a cada rato
+      - waha_sessions:/app/sessions
+    networks:
+      - red_interna
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - GENERIC_TIMEZONE=America/Guayaquil
+      # Importante: Si lo subes a un servidor real, cambia localhost por tu IP o Dominio
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      # Esto guarda tus flujos y credenciales de n8n
+      - n8n_data:/home/node/.n8n
+    networks:
+      - red_interna
+    depends_on:
+      - waha
+
+volumes:
+  n8n_data:
+  waha_sessions:
+
+networks:
+  red_interna:
