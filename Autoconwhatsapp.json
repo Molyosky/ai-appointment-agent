@@ -1,0 +1,335 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.payload.body }}",
+        "options": {
+          "systemMessage": "=Eres Sofía, la asistente virtual profesional y amable del consultorio dental del Dr. Galan.\nTu objetivo es gestionar la agenda de citas de manera eficiente y cálida.\n\nCONTEXTO TEMPORAL:\n- FECHA Y HORA ACTUAL: {{ $now.setZone('America/Guayaquil').toFormat(\"cccc d 'de' MMMM yyyy, h:mm a\") }}\n- ZONA HORARIA: America/Guayaquil (Ecuador).\n\nREGLAS DE NEGOCIO (ESTRICTO):\n1. HORARIO DE ATENCIÓN: Lunes a Viernes de 09:00 AM a 06:00 PM (18:00). Sábados de 09:00 AM a 01:00 PM (13:00). Domingos cerrado.\n2. DURACIÓN CITA: 1 hora por defecto.\n3. DATOS REQUERIDOS: Para confirmar, necesitas fecha y hora exactas. Si no sabes el nombre del paciente, PÍDELO antes de agendar.\n4. HORAS EXACTAS: Las citas SOLO pueden iniciar en horas en punto (ej: 3:00 PM, 4:00 PM). NO agendar en medias horas (ej: 3:30 PM). Si el usuario pide 3:30, explica la regla y ofrece 3:00 o 4:00.\n\nTUS HERRAMIENTAS:\n1. 'Herramienta_Leer_Calendario': Muestra eventos futuros con sus detalles e ID.\n2. 'Herramienta_Agendar_Cita': Crea un evento nuevo.\n3. 'Herramienta_Borrar_Cita': Elimina un evento usando su ID específico.\n\nLÓGICA PARA AGENDAR (ORDEN ESTRICTO DE EJECUCIÓN):\n1. PASO 1 (CRÍTICO): ANTES de pedir cualquier dato, ejecuta 'Herramienta_Leer_Calendario'.\n   - Debes verificar que la fecha y hora solicitada estén libres.\n   - Haz esto INCLUSO si aún no sabes el nombre del paciente.\n\n2. PASO 2: Analiza lo que leíste.\n   - Si la hora está OCUPADA: Informa al usuario y ofrece otras horas. (NO pidas el nombre todavía, no tiene sentido).\n   - Si la hora está LIBRE: Dile \"Ese horario está disponible\".\n\n3. PASO 3: Solicita Datos y Agenda.\n   - Solo si confirmaste que está libre en el PASO 2, pide el nombre del paciente (si no lo tienes).\n   - Una vez tengas Disponibilidad + Nombre, ejecuta 'Herramienta_Agendar_Cita'.\n\nLÓGICA PARA REAGENDAR O MODIFICAR (CRÍTICO):\n1. Si el usuario quiere cambiar una fecha, PRIMERO debes encontrar la cita antigua.\n2. Ejecuta 'Herramienta_Leer_Calendario'. BUSCA eventos cuyo 'summary' coincida con el nombre del usuario.\n3. IDENTIFICA EL ID del evento antiguo correcto.\n4. Ejecuta 'Herramienta_Borrar_Cita' usando ese ID.\n5. Ejecuta 'Herramienta_Agendar_Cita' con la nueva fecha (Recordando poner el título correcto en 'summary').\n6. Confirma: \"He movido tu cita del [fecha vieja] al [fecha nueva]\".\n\nREGLAS DE SEGURIDAD:\n- NUNCA inventes un ID. Debes leerlo del calendario.\n- Si encuentras varios eventos parecidos, PREGUNTA al usuario cuál es el suyo antes de borrar.\n- Si no encuentras la cita antigua, avisa y pregunta si desea agendar la nueva de todas formas.\n\nESTILO DE RESPUESTA:\n- Si está libre: Confirma con entusiasmo.\n- Si está ocupado: Ofrece la hora libre más cercana.\n- Tono: Profesional, empático y directo.\n- Usa negritas (*) para resaltar fechas y horas importantes."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -192,
+        64
+      ],
+      "id": "7be29cff-1945-44c1-8e91-4da71f6cb24b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        368
+      ],
+      "id": "703c4d33-be36-49ea-a611-f9a2d37c3b19",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fXcZNsb6cw3FOxAw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Úsala SIEMPRE como primer paso cuando el usuario pregunte por disponibilidad o quiera agendar una cita, antes de pedir cualquier dato.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "yolotime2322@gmail.com",
+          "mode": "list",
+          "cachedResultName": "yolotime2322@gmail.com"
+        },
+        "limit": 500,
+        "timeMax": "={{ $now.plus({ months: 6 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        352
+      ],
+      "id": "10a39d01-09b3-46ef-bf95-e470519262c6",
+      "name": "Herramienta_Leer_Calendario",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pKpNQ2TVSTw0wcZh",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Crea una cita. Es OBLIGATORIO llenar el campo 'summary' con el formato: \"Cita Dental - [Nombre del Paciente]\".",
+        "calendar": {
+          "__rl": true,
+          "value": "yolotime2322@gmail.com",
+          "mode": "list",
+          "cachedResultName": "yolotime2322@gmail.com"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "description": "Agendado por IA.",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        224
+      ],
+      "id": "a6d89dbf-00a5-4c0d-8955-1014b58bff1d",
+      "name": "Herramienta_Agendar_Cita",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pKpNQ2TVSTw0wcZh",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -832,
+        64
+      ],
+      "id": "dae4c18a-bbcd-4076-a7c2-a575146c549f",
+      "name": "Webhook",
+      "webhookId": "72f8014a-b089-4575-a18e-792896ca65b2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://waha:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "8e6a52153bd24ca7b4ad47c06dbf7eec"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session",
+              "value": "default"
+            },
+            {
+              "name": "chatId",
+              "value": "={{ $('Webhook').item.json.body.payload.from }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2b5270ae-545a-417a-8f43-dfc2ac28cc26",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=// Function node: crear sessionId a partir del payload items[0].json.sessionId =   (items[0].json.payload && (items[0].json.payload['from'] || items[0].json.payload.from))?.split?.('@')?.[0]   || (items[0].json._data && (items[0].json._data['from'] || items[0].json._data.from))?.split?.('@')?.[0]   || items[0].json.payload?.['from']   || items[0].json._data?.['from']   || ''; return items;"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        304
+      ],
+      "id": "e90fe308-19f2-4a6c-8fe3-0b70db84d3af",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -944,
+        288
+      ],
+      "id": "c04e0ecb-32a6-4f73-97e2-a2ad49bb33fe",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Elimina un evento del calendario. IMPORTANTE: Debes proveer el argumento 'eventId' con el valor del campo 'id' que obtuviste al leer el calendario previamente.",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "yolotime2322@gmail.com",
+          "mode": "list",
+          "cachedResultName": "yolotime2322@gmail.com"
+        },
+        "eventId": "=",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        416
+      ],
+      "id": "db354ecf-d875-4830-a155-46f7242f6f96",
+      "name": "Herramienta_Borrar_Cita",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pKpNQ2TVSTw0wcZh",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -624,
+        64
+      ],
+      "id": "62134631-30cd-4762-a260-e4293801b6d4",
+      "name": "Create spreadsheet"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Herramienta_Leer_Calendario": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Herramienta_Agendar_Cita": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create spreadsheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "Herramienta_Borrar_Cita": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create spreadsheet": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "95bf2c10-14f7-45ac-8326-e14aaa8a0792",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "86fe5726c8887337f55a6699c72f0f44ccd116a4841b1a6032497987b05e58fc"
+  },
+  "id": "RSbgYzDB43aMUTMB",
+  "tags": []
+}
