@@ -13,7 +13,6 @@ Un agente de Inteligencia Artificial autónomo capaz de gestionar agendas médic
 El sistema opera mediante contenedores Docker interconectados:
 1.  **n8n:** Orquesta la lógica, gestiona la memoria de la conversación y conecta las APIs.
 2.  **WAHA:** Provee la interfaz HTTP para enviar/recibir mensajes de WhatsApp.
-3.  **Redis:** Gestiona la sesión y caché de alto rendimiento.
 
 ## 🛠️ Instalación (Local)
 1.  Clonar el repositorio.
